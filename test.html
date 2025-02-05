@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Clue Game</title>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+        }
+        .qr-container {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .qr-box {
+            text-align: center;
+            border: 1px solid #ccc;
+            padding: 10px;
+            border-radius: 10px;
+            transition: transform 0.2s;
+        }
+        .qr-box:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        #reader {
+            width: 300px;
+            margin: auto;
+        }
+        #clue {
+            margin-top: 20px;
+            font-size: 20px;
+            font-weight: bold;
+        }
+        @media (max-width: 600px) {
+            .qr-box {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>QR Clue Game</h1>
+    <p id="instructions">Scan the correct QR code with your mobile device to reveal the answer.</p>
+
+    <!-- Desktop: Display QR Codes -->
+    <div id="desktop-view" class="qr-container">
+        <div class="qr-box">
+            <p>Clue 1</p>
+            <img src="https://api.qrserver.com/v1/create-qr-code/?data=QRCLUE:12345" alt="QR Code 1">
+        </div>
+        <div class="qr-box">
+            <p>Clue 2</p>
+            <img src="https://api.qrserver.com/v1/create-qr-code/?data=QRCLUE:67890" alt="QR Code 2">
+        </div>
+        <div class="qr-box">
+            <p>Clue 3</p>
+            <img src="https://api.qrserver.com/v1/create-qr-code/?data=QRCLUE:54321" alt="QR Code 3">
+        </div>
+    </div>
+
+    <!-- Mobile: QR Code Scanner -->
+    <div id="mobile-view">
+        <div id="reader"></div>
+        <p id="clue"></p>
+    </div>
+
+    <script>
+        // Detect if the device is mobile
+        function isMobile() {
+            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        }
+
+        // Show the appropriate view based on the device
+        function setupView() {
+            const desktopView = document.getElementById("desktop-view");
+            const mobileView = document.getElementById("mobile-view");
+            const instructions = document.getElementById("instructions");
+
+            if (isMobile()) {
+                desktopView.style.display = "none";
+                mobileView.style.display = "block";
+                instructions.innerText = "Scan a QR code to reveal the clue.";
+                initializeScanner();
+            } else {
+                desktopView.style.display = "flex";
+                mobileView.style.display = "none";
+                instructions.innerText = "Scan the correct QR code with your mobile device to reveal the answer.";
+            }
+        }
+
+        // Initialize the QR code scanner for mobile
+        function initializeScanner() {
+            function onScanSuccess(decodedText) {
+                if (decodedText.startsWith("QRCLUE:")) {
+                    const qrId = decodedText.replace("QRCLUE:", "");
+                    fetchClue(qrId);
+                } else {
+                    alert("Invalid QR Code!");
+                }
+            }
+
+            function onScanError(errorMessage) {
+                console.warn(errorMessage);
+            }
+
+            const html5QrCode = new Html5Qrcode("reader");
+            html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, onScanSuccess, onScanError);
+        }
+
+        // Fetch the clue from the server
+        async function fetchClue(qrId) {
+            try {
+                const response = await fetch("https://ctf-2-jh9i.onrender.com", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ id: qrId })
+                });
+                const data = await response.json();
+                if (data.valid) {
+                    document.getElementById("clue").innerText = "You found: " + data.clue;
+                } else {
+                    alert("Invalid QR Code!");
+                }
+            } catch (error) {
+                console.error("Error fetching clue:", error);
+            }
+        }
+
+        // Set up the view when the page loads
+        window.onload = setupView;
+    </script>
+</body>
+</html>
